@@ -1,0 +1,172 @@
+.dashboard-welcome {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+}
+
+.dashboard-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 20px; margin-top: 20px;
+}
+
+/* ── Search panel ── */
+.search-panel { padding: 24px 28px; }
+.search-panel__header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+}
+
+.trip-toggle {
+  display: flex;
+  background: rgba(37,99,235,0.06);
+  border: 1px solid rgba(37,99,235,0.15);
+  border-radius: 10px; padding: 3px; gap: 2px;
+}
+.trip-btn {
+  padding: 6px 14px; border-radius: 8px; border: none;
+  background: none; cursor: pointer;
+  font-family: var(--font-primary); font-size: 12px; font-weight: 600;
+  color: var(--gray-500); transition: var(--transition);
+}
+.trip-btn--active {
+  background: white; color: var(--blue-700);
+  box-shadow: 0 2px 8px rgba(37,99,235,0.15);
+}
+
+.search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px; align-items: end;
+}
+.search-submit-col  { display: flex; align-items: flex-end; }
+.search-submit-btn  { width: 100%; justify-content: center; }
+
+/* ── Results ── */
+.results-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(59,130,246,0.08);
+}
+
+.flight-result-card {
+  display: flex; align-items: center; gap: 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(59,130,246,0.06);
+  transition: background 0.2s; flex-wrap: wrap;
+}
+.flight-result-card:hover   { background: rgba(59,130,246,0.02); }
+.flight-result-card:last-child { border-bottom: none; }
+
+.flight-result-card__route {
+  display: flex; align-items: center; gap: 16px;
+  flex: 1; min-width: 240px;
+}
+.flight-result-card__airport { text-align: center; }
+.flight-result-card__code {
+  display: block;
+  font-family: var(--font-primary); font-size: 20px; font-weight: 800;
+  color: var(--navy);
+}
+.flight-result-card__time { font-size: 11px; color: var(--gray-500); }
+.flight-result-card__line {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.flight-result-card__duration { font-size: 11px; color: var(--gray-400); }
+.flight-result-card__ruler {
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--blue-300), var(--blue-500));
+  border-radius: 1px;
+  display: flex; align-items: center; justify-content: flex-end;
+}
+.flight-result-card__info {
+  display: flex; flex-direction: column; gap: 3px; min-width: 120px;
+}
+.flight-result-card__right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 140px;
+}
+.flight-result-card__price {
+  font-family: var(--font-primary); font-size: 20px; font-weight: 800; color: var(--blue-700);
+}
+
+/* ── Guest Hero ── */
+.guest-hero {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px; padding: 28px 32px;
+  background: linear-gradient(135deg, rgba(37,99,235,0.08), rgba(29,78,216,0.05));
+  border: 1px solid rgba(37,99,235,0.15);
+  border-radius: var(--radius-2xl); margin-bottom: 24px; flex-wrap: wrap;
+}
+.guest-hero__content { max-width: 480px; }
+.guest-hero__title {
+  font-family: var(--font-primary); font-size: 32px; font-weight: 800;
+  color: var(--gray-800); margin-bottom: 8px; line-height: 1.2;
+}
+.guest-hero__title span {
+  background: linear-gradient(135deg, var(--navy), var(--blue-600));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.guest-hero__sub  { color: var(--gray-600); font-size: 14px; line-height: 1.6; }
+.guest-hero__badges { display: flex; gap: 10px; flex-wrap: wrap; }
+.guest-badge {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(37,99,235,0.12);
+  border-radius: var(--radius-lg); font-size: 20px; min-width: 72px;
+  backdrop-filter: blur(10px);
+}
+
+/* ── Role banners ── */
+.role-welcome-banner {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 24px; border-radius: var(--radius-xl);
+  margin-bottom: 24px; color: white;
+}
+/* Navy gradient matching screenshot */
+.staff-banner { background: linear-gradient(135deg, #1d4ed8, #1a3a5c); }
+.admin-banner { background: linear-gradient(135deg, #1a3a5c, #0f2942); }
+
+/* ── Quick action rows ── */
+.quick-action-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius-md);
+  cursor: pointer; transition: var(--transition); margin-bottom: 6px;
+}
+.quick-action-row:hover { background: rgba(37,99,235,0.06); }
+.quick-action-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* ── Booking / Payment rows ── */
+.booking-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; border-radius: var(--radius-md);
+  cursor: pointer; transition: var(--transition);
+  background: rgba(59,130,246,0.03);
+  border: 1px solid rgba(59,130,246,0.07);
+  margin-bottom: 8px;
+}
+.booking-row:hover  { background: rgba(59,130,246,0.08); }
+.booking-row:last-child { margin-bottom: 0; }
+.booking-row__icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, rgba(37,99,235,0.14), rgba(29,78,216,0.08));
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  color: var(--blue-600); flex-shrink: 0;
+}
+.payment-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: var(--radius-md);
+  background: rgba(59,130,246,0.03);
+  border: 1px solid rgba(59,130,246,0.07);
+  margin-bottom: 8px;
+}
+.payment-row:last-child { margin-bottom: 0; }
+
+@media (max-width: 1100px) { .dashboard-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .search-grid { grid-template-columns: 1fr 1fr; }
+  .guest-hero { padding: 20px; }
+  .guest-hero__title { font-size: 24px; }
+}
