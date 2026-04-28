@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Ticket, Search, Plus, Users, X, Plane, MapPin, Calendar, ChevronDown } from 'lucide-react';
+import { Ticket, Search, Plus, Users, X, Plane, MapPin, Calendar, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { bookingAPI, passengerAPI, flightAPI } from '../api/services';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,217 @@ const defaultBooking = {
   flightId: '', passengers: [{ ...defaultPassenger }],
   seatIds: [], mealPreference: '', luggageKg: 0,
   contactEmail: '', contactPhone: '', tripType: 'ONE_WAY',
+};
+
+// ─── PDF Ticket Generator ──────────────────────────────────────────────────
+const downloadTicketPDF = async (booking, passengers, flightInfo) => {
+  // Dynamically load jsPDF from CDN
+  if (!window.jspdf) {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W = 210;
+  const margin = 18;
+  let y = 0;
+
+  // ── Header bar ──
+  doc.setFillColor(13, 71, 161);
+  doc.rect(0, 0, W, 38, 'F');
+
+  // Logo text
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.text('✈  AirNexus', margin, 18);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('BOARDING PASS / E-TICKET', margin, 26);
+
+  // PNR box top-right
+  doc.setFillColor(255, 255, 255, 0.15);
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(W - 62, 7, 48, 22, 3, 3, 'S');
+  doc.setFontSize(7);
+  doc.text('PNR CODE', W - 58, 15);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(booking.pnrCode || '------', W - 58, 24);
+
+  y = 50;
+
+  // ── Flight info card ──
+  doc.setFillColor(237, 242, 255);
+  doc.roundedRect(margin, y, W - margin * 2, 38, 4, 4, 'F');
+
+  const flight = flightInfo || {};
+  const origin = flight.origin || '---';
+  const dest = flight.destination || '---';
+  const flightNum = flight.flightNumber || booking.flightId?.substring(0, 10) || '---';
+  const depTime = flight.departureTime ? formatDateTime(flight.departureTime) : '---';
+  const arrTime = flight.arrivalTime ? formatDateTime(flight.arrivalTime) : '---';
+  const duration = flight.durationMinutes ? formatDuration(flight.durationMinutes) : '---';
+
+  // Origin
+  doc.setTextColor(13, 71, 161);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.text(origin, margin + 8, y + 22);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 100);
+  doc.text('ORIGIN', margin + 8, y + 30);
+  doc.text(depTime, margin + 8, y + 36);
+
+  // Arrow + flight number (center)
+  const cx = W / 2;
+  doc.setTextColor(13, 71, 161);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('— — ✈ — —', cx, y + 18, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 100);
+  doc.text(flightNum, cx, y + 25, { align: 'center' });
+  doc.text(duration, cx, y + 31, { align: 'center' });
+
+  // Destination
+  doc.setTextColor(13, 71, 161);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.text(dest, W - margin - 8, y + 22, { align: 'right' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 80, 100);
+  doc.text('DESTINATION', W - margin - 8, y + 30, { align: 'right' });
+  doc.text(arrTime, W - margin - 8, y + 36, { align: 'right' });
+
+  y += 46;
+
+  // ── Booking details grid ──
+  const drawInfoBox = (label, value, bx, by, bw) => {
+    doc.setFillColor(248, 250, 255);
+    doc.setDrawColor(210, 220, 240);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(bx, by, bw, 16, 2, 2, 'FD');
+    doc.setTextColor(120, 130, 160);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text(label.toUpperCase(), bx + 4, by + 6);
+    doc.setTextColor(30, 40, 80);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(String(value || '—'), bx + 4, by + 13);
+  };
+
+  const col1 = margin;
+  const col2 = margin + (W - margin * 2) / 3 + 2;
+  const col3 = margin + (W - margin * 2) * 2 / 3 + 4;
+  const bw = (W - margin * 2) / 3 - 4;
+
+  drawInfoBox('Status', booking.status, col1, y, bw);
+  drawInfoBox('Trip Type', booking.tripType?.replace('_', ' '), col2, y, bw);
+  drawInfoBox('Passengers', booking.numberOfPassengers, col3, y, bw);
+  y += 20;
+
+  drawInfoBox('Base Fare', formatCurrency(booking.baseFare), col1, y, bw);
+  drawInfoBox('Taxes', formatCurrency(booking.taxes), col2, y, bw);
+  drawInfoBox('Ancillary', formatCurrency(booking.ancillaryCharges), col3, y, bw);
+  y += 20;
+
+  drawInfoBox('Luggage', (booking.luggageKg || 0) + ' kg', col1, y, bw);
+  drawInfoBox('Meal', booking.mealPreference || 'None', col2, y, bw);
+  drawInfoBox('Booked On', formatDate(booking.bookedAt), col3, y, bw);
+  y += 20;
+
+  drawInfoBox('Contact Email', booking.contactEmail, col1, y, bw * 2 + 4);
+  drawInfoBox('Contact Phone', booking.contactPhone, col3, y, bw);
+  y += 24;
+
+  // Total fare highlight
+  doc.setFillColor(13, 71, 161);
+  doc.roundedRect(margin, y, W - margin * 2, 14, 3, 3, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('TOTAL FARE', margin + 6, y + 9);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(formatCurrency(booking.totalFare), W - margin - 6, y + 9, { align: 'right' });
+  y += 20;
+
+  // ── Passengers section ──
+  if (passengers && passengers.length > 0) {
+    doc.setTextColor(13, 71, 161);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('PASSENGER DETAILS', margin, y);
+    y += 6;
+
+    // Table header
+    doc.setFillColor(13, 71, 161);
+    doc.rect(margin, y, W - margin * 2, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    const cols = [margin + 2, margin + 52, margin + 82, margin + 112, margin + 142];
+    ['NAME', 'GENDER', 'TYPE', 'SEAT', 'CHECK-IN'].forEach((h, i) => doc.text(h, cols[i], y + 5.5));
+    y += 8;
+
+    passengers.forEach((p, idx) => {
+      const bg = idx % 2 === 0 ? [248, 250, 255] : [255, 255, 255];
+      doc.setFillColor(...bg);
+      doc.rect(margin, y, W - margin * 2, 9, 'F');
+      doc.setTextColor(30, 40, 80);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      const name = p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim() || '—';
+      doc.text(name.substring(0, 22), cols[0], y + 6);
+      doc.text(p.gender || '—', cols[1], y + 6);
+      doc.text(p.passengerType || 'ADULT', cols[2], y + 6);
+      doc.text(p.seatNumber || '—', cols[3], y + 6);
+      doc.setTextColor(p.checkedIn ? 34 : 180, p.checkedIn ? 139 : 100, p.checkedIn ? 34 : 30);
+      doc.text(p.checkedIn ? '✓ Yes' : '✗ No', cols[4], y + 6);
+      y += 9;
+    });
+    y += 4;
+  }
+
+  // ── Dashed cut line ──
+  doc.setDrawColor(180, 190, 210);
+  doc.setLineWidth(0.3);
+  doc.setLineDashPattern([2, 2], 0);
+  doc.line(margin, y, W - margin, y);
+  doc.setLineDashPattern([], 0);
+  y += 6;
+
+  // ── Footer ──
+  doc.setFillColor(245, 247, 255);
+  doc.rect(margin, y, W - margin * 2, 22, 'F');
+  doc.setTextColor(100, 110, 140);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Thank you for choosing AirNexus! Please arrive at the airport at least 2 hours before departure.', margin + 4, y + 8);
+  doc.text('This is an electronic ticket. Present this document along with a valid photo ID at check-in.', margin + 4, y + 14);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(13, 71, 161);
+  doc.text('www.airnexus.com  |  support@airnexus.com  |  1800-AIR-NEXUS', margin + 4, y + 20);
+
+  // Page border
+  doc.setDrawColor(13, 71, 161);
+  doc.setLineWidth(0.6);
+  doc.rect(4, 4, W - 8, 289, 'S');
+
+  doc.save(`AirNexus_Ticket_${booking.pnrCode}.pdf`);
 };
 
 
@@ -182,6 +393,7 @@ const BookingsPage = () => {
   const [loadingPassengers, setLoadingPassengers] = useState(false);
   const [cancelId, setCancelId] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -213,6 +425,31 @@ const BookingsPage = () => {
 
   const openDetail = (b) => { setDetailBooking(b); loadPassengers(b.bookingId); };
 
+  const handleDownloadTicket = async (b, e) => {
+    e.stopPropagation();
+    setDownloadingId(b.bookingId);
+    try {
+      // Fetch passengers for this booking
+      const pasRes = await passengerAPI.getPassengersByBooking(b.bookingId);
+      const passengers = pasRes.data || [];
+
+      // Try to fetch flight info for richer ticket
+      let flightInfo = null;
+      try {
+        const flRes = await flightAPI.getFlightById(b.flightId);
+        flightInfo = flRes.data;
+      } catch { /* flight info optional */ }
+
+      await downloadTicketPDF(b, passengers, flightInfo);
+      toast.success(`Ticket downloaded: ${b.pnrCode}.pdf`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate ticket PDF.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const handleCancel = async () => {
     try {
       const res = await bookingAPI.cancelBooking(cancelId);
@@ -226,7 +463,6 @@ const BookingsPage = () => {
   const handleCreate = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      // Map frontend fullName → firstName + lastName expected by BookingRequest.PassengerDetails
       const mappedPassengers = bookingForm.passengers.map(p => {
         const parts = (p.fullName || '').trim().split(/\s+/);
         const firstName = parts[0] || 'Unknown';
@@ -234,9 +470,7 @@ const BookingsPage = () => {
         const gender = (p.gender || 'MALE').toUpperCase();
         const title = (p.title || (gender === 'FEMALE' ? 'MRS' : 'MR')).toUpperCase();
         return {
-          title,
-          firstName,
-          lastName,
+          title, firstName, lastName,
           dateOfBirth: p.dateOfBirth || '2000-01-01',
           gender,
           passportNumber: p.passportNumber || null,
@@ -328,8 +562,27 @@ const BookingsPage = () => {
                                 <td><Badge status={b.status} /></td>
                                 <td style={{ fontSize: '12px', color: 'var(--gray-500)' }}>{formatDate(b.bookedAt)}</td>
                                 <td>
-                                  <div style={{ display: 'flex', gap: '6px' }}>
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                     <button className="btn btn-secondary btn-sm" onClick={() => openDetail(b)}>Details</button>
+                                    <button
+                                        className="btn btn-sm"
+                                        onClick={(e) => handleDownloadTicket(b, e)}
+                                        disabled={downloadingId === b.bookingId}
+                                        title="Download Ticket PDF"
+                                        style={{
+                                          background: 'linear-gradient(135deg, #0d47a1, #1565c0)',
+                                          color: '#fff',
+                                          border: 'none',
+                                          display: 'flex', alignItems: 'center', gap: '4px',
+                                          opacity: downloadingId === b.bookingId ? 0.6 : 1,
+                                          cursor: downloadingId === b.bookingId ? 'wait' : 'pointer',
+                                        }}
+                                    >
+                                      {downloadingId === b.bookingId
+                                          ? <div className="spinner" style={{ width: 12, height: 12, borderColor: '#fff', borderTopColor: 'transparent' }} />
+                                          : <Download size={13} />}
+                                      Ticket
+                                    </button>
                                     {(b.status === 'PENDING' || b.status === 'CONFIRMED') && (
                                         <button className="btn btn-danger btn-sm" onClick={() => setCancelId(b.bookingId)}><X size={13} /></button>
                                     )}
@@ -352,6 +605,18 @@ const BookingsPage = () => {
                    {(detailBooking?.status === 'PENDING' || detailBooking?.status === 'CONFIRMED') && (
                        <button className="btn btn-danger btn-sm" onClick={() => { setCancelId(detailBooking.bookingId); setDetailBooking(null); }}>Cancel Booking</button>
                    )}
+                   <button
+                       className="btn btn-sm"
+                       onClick={async (e) => { await handleDownloadTicket(detailBooking, e); }}
+                       disabled={downloadingId === detailBooking?.bookingId}
+                       style={{
+                         background: 'linear-gradient(135deg, #0d47a1, #1565c0)',
+                         color: '#fff', border: 'none',
+                         display: 'flex', alignItems: 'center', gap: '5px',
+                       }}
+                   >
+                     <Download size={13} /> Download Ticket
+                   </button>
                    <button className="btn btn-secondary btn-sm" onClick={() => setDetailBooking(null)}>Close</button>
                  </div>
                }>
